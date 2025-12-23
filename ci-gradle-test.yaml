@@ -1,0 +1,27 @@
+apiVersion: argoproj.io/v1alpha1
+kind: WorkflowTemplate
+metadata:
+  name: ci-gradle-test
+  namespace: argo
+spec:
+  templates:
+    - name: gradle-test
+      inputs:
+        artifacts:
+          - name: source
+            path: /workspace
+      container:
+        image: gradle:8.5-jdk17
+        command: ["/bin/bash", "-c"]
+        args:
+          - |
+            set -e
+
+            echo "Workspace content:"
+            ls -la /workspace
+
+            # enter the single repo directory
+            cd /workspace/*
+            
+            chmod +x gradlew
+            ./gradlew test

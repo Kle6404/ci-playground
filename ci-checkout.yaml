@@ -1,0 +1,45 @@
+apiVersion: argoproj.io/v1alpha1
+kind: WorkflowTemplate
+metadata:
+  name: ci-checkout
+  namespace: argo
+spec:
+  serviceAccountName: argo-workflow
+  entrypoint: main
+
+  templates:
+    - name: main
+      steps:
+        - - name: checkout
+            template: checkout
+        - - name: test
+            template: test
+            arguments:
+              artifacts:
+                - name: source
+                  from: "{{steps.checkout.outputs.artifacts.source}}"
+
+    - name: checkout
+      container:
+        image: alpine/git:2.45.2
+        command: [sh, -c]
+        args:
+          - |
+            git clone https://github.com/octocat/Hello-World.git /src
+      outputs:
+        artifacts:
+          - name: source
+            path: /src
+
+    - name: test
+      inputs:
+        artifacts:
+          - name: source
+            path: /src
+      container:
+        image: alpine:3.20
+        command: [sh, -c]
+        args:
+          - |
+            echo "Repo contents:"
+            ls -la /src

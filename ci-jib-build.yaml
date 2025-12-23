@@ -1,0 +1,78 @@
+apiVersion: argoproj.io/v1alpha1
+kind: WorkflowTemplate
+metadata:
+  name: ci-jib-build
+  namespace: argo
+spec:
+  serviceAccountName: argo-workflow
+  entrypoint: main
+
+  templates:
+    - name: main
+      steps:
+        - - name: checkout
+            template: checkout
+        - - name: test
+            template: gradle-test
+            arguments:
+              artifacts:
+                - name: source
+                  from: "{{steps.checkout.outputs.artifacts.source}}"
+        - - name: build-image
+            template: jib-build
+            arguments:
+              artifacts:
+                - name: source
+                  from: "{{steps.checkout.outputs.artifacts.source}}"
+
+    - name: checkout
+      container:
+        image: alpine/git:2.45.2
+        command: [sh, -c]
+        args:
+          - git clone https://github.com/Kle6404/ci-playground.git /src
+      outputs:
+        artifacts:
+          - name: source
+            path: /src
+
+    - name: gradle-test
+      inputs:
+        artifacts:
+          - name: source
+            path: /src
+      container:
+        image: eclipse-temurin:17-jdk-jammy
+        workingDir: /src
+        command: [sh, -c]
+        args:
+          - |
+            chmod +x gradlew
+            ./gradlew test
+
+    - name: jib-build
+      inputs:
+        artifacts:
+          - name: source
+            path: /src
+      container:
+        image: eclipse-temurin:17-jdk-jammy
+        workingDir: /src
+        env:
+          - name: IMAGE_TAG
+            value: "{{workflow.name}}"
+        volumeMounts:
+          - name: docker-config
+            mountPath: /kaniko/.docker
+      volumes:
+        - name: docker-config
+          secret:
+            secretName: ghcr-credentials
+            items:
+              - key: .dockerconfigjson
+                path: config.json
+      command: [sh, -c]
+      args:
+        - |
+          chmod +x gradlew
+          ./gradlew jib

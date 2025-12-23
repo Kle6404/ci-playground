@@ -1,0 +1,35 @@
+apiVersion: argoproj.io/v1alpha1
+kind: WorkflowTemplate
+metadata:
+  name: ci-skeleton
+  namespace: argo
+spec:
+  serviceAccountName: argo-workflow
+  entrypoint: main
+
+  templates:
+  - name: main
+    steps:
+      - - name: checkout
+          templateRef:
+            name: ci-checkout
+            template: checkout
+
+      - - name: test
+          templateRef:
+            name: ci-gradle-test
+            template: gradle-test
+          arguments:
+            artifacts:
+              - name: source
+                from: "{{steps.checkout.outputs.artifacts.source}}"
+
+      - - name: build-image
+          templateRef:
+            name: ci-jib-build
+            template: jib-build
+          arguments:
+            artifacts:
+              - name: source
+                from: "{{steps.checkout.outputs.artifacts.source}}"
+
