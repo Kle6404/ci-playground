@@ -1,1 +1,37 @@
+apiVersion: argoproj.io/v1alpha1
+kind: WorkflowTemplate
+metadata:
+  name: ci-jib-build
+  namespace: argo
+spec:
+  templates:
+    - name: jib-build
+      inputs:
+        artifacts:
+          - name: source
+            path: /workspace
+      container:
+        image: gradle:8.5-jdk17
+        workingDir: /workspace
+        env:
+          - name: IMAGE_TAG
+            value: "{{workflow.uid}}"
+          - name: IMAGE_BRANCH
+            value: main
+          - name: JIB_TO_AUTH_USERNAME
+            valueFrom:
+              secretKeyRef:
+                name: github-ci-token
+                key: username
+          - name: JIB_TO_AUTH_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: github-ci-token
+                key: token
+        command: ["/bin/bash", "-c"]
+        args:
+          - |
+            set -euxo pipefail
+            chmod +x ./gradlew
+            ./gradlew jib --no-daemon --info
 
