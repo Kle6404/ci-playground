@@ -33,5 +33,11 @@ spec:
           - |
             set -euxo pipefail
             chmod +x ./gradlew
-            ./gradlew jib --no-daemon --info
 
+            ./gradlew jib \
+              -Djib.to.image=ghcr.io/kle6404/ci-playground \
+              -Djib.to.tags=${IMAGE_TAG},${IMAGE_BRANCH} \
+              --no-daemon \
+              --info
+
+              
